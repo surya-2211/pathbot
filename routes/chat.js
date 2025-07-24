@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { exec } = require('child_process');
+const path = require('path'); // ✅ NEW
 const axios = require('axios');
 const auth = require('../middleware/auth');
 const Chat = require('../models/Chat');
@@ -17,7 +18,10 @@ router.post('/', auth, async (req, res) => {
     return res.status(400).json({ msg: 'Please enter a career-related question.' });
   }
 
-  exec(`python ../vector/query_index.py "${message}"`, async (err, stdout) => {
+  const scriptPath = path.resolve(__dirname, '../vector/query_index.py'); // ✅ FIXED
+  const command = `python "${scriptPath}" "${message}"`;
+
+  exec(command, async (err, stdout) => {
     if (err) {
       console.error('❌ Retrieval error:', err.message);
       return res.status(500).json({ msg: 'RAG retrieval failed.' });
@@ -27,6 +31,7 @@ router.post('/', auth, async (req, res) => {
     try {
       chunks = JSON.parse(stdout);
     } catch (e) {
+      console.error('❌ Failed to parse JSON from Python output:', stdout);
       return res.status(500).json({ msg: 'Invalid RAG format' });
     }
 
@@ -66,15 +71,14 @@ router.post('/', auth, async (req, res) => {
 
       res.json({ response: reply });
     } catch (err) {
-  const isRateLimited = err.response?.status === 429;
-  const fallbackMsg = isRateLimited
-    ? 'CareerGPT is taking a quick break due to high demand. Please try again in a few moments!'
-    : 'AI assistant is currently unavailable.';
+      const isRateLimited = err.response?.status === 429;
+      const fallbackMsg = isRateLimited
+        ? 'CareerGPT is taking a quick break due to high demand. Please try again in a few moments!'
+        : 'AI assistant is currently unavailable.';
 
-  console.error('❌ OpenRouter error:', err.response?.data || err.message);
-  res.status(500).json({ msg: fallbackMsg });
-}
-
+      console.error('❌ OpenRouter error:', err.response?.data || err.message);
+      res.status(500).json({ msg: fallbackMsg });
+    }
   });
 });
 
