@@ -6,6 +6,10 @@ const auth = require('../middleware/auth');
 const Chat = require('../models/Chat');
 const User = require('../models/User');
 
+router.get('/test', (req, res) => {
+  res.send('Chat route is working!');
+});
+
 router.post('/', auth, async (req, res) => {
   const { message } = req.body;
 
